@@ -41,8 +41,10 @@ from transformers import PreTrainedTokenizerBase
 
 try:
     from vllm.transformers_utils.tokenizer import get_tokenizer
+    print("Tokenizer from vllm.transformers_utils.tokenizer")
 except ImportError:
     from backend_request_func import get_tokenizer
+    print("Tokenizer from backend_request_func")
 
 
 @dataclass
@@ -83,7 +85,8 @@ def sample_sharegpt_requests(
                 data["conversations"][1]["value"]) for data in dataset]
 
     # Shuffle the dataset.
-    random.shuffle(dataset)
+    # No - we dont want to shuffle
+    #random.shuffle(dataset)
 
     # Filter out sequences that are too long or too short
     filtered_dataset: List[Tuple[str, int, int]] = []
@@ -106,6 +109,7 @@ def sample_sharegpt_requests(
             # Prune too long sequences.
             continue
         filtered_dataset.append((prompt, prompt_len, output_len))
+        print(f"Adding prompt[{len(filtered_dataset)}] num_tok[{prompt_len}] prompt: [{prompt}]")
 
     return filtered_dataset
 
@@ -377,6 +381,7 @@ async def benchmark(
         "output_lens": actual_output_lens,
         "ttfts": [output.ttft for output in outputs],
         "itls": [output.itl for output in outputs],
+        "input_prompts": [req[0] for req in input_requests],
         "generated_texts": [output.generated_text for output in outputs],
         "errors": [output.error for output in outputs],
     }
@@ -501,7 +506,7 @@ def main(args: argparse.Namespace):
 
         # Save to file
         base_model_id = model_id.split("/")[-1]
-        file_name = f"{backend}-{args.request_rate}qps-{base_model_id}-{current_dt}.json"  #noqa
+        file_name = f"{backend}-{args.request_rate}qps-{base_model_id}-{current_dt}_n{args.num_prompts}.json"  #noqa
         if args.result_filename:
             file_name = args.result_filename
         if args.result_dir:
